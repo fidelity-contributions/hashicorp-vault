@@ -672,6 +672,38 @@ func (b *backend) getTrustedCertsFromCache(certName string) (*trusted, bool) {
 	return nil, false
 }
 
+// isTransientError checks if an error is likely transient and might succeed on retry
+func isTransientError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Check for context cancellation or timeout errors
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+
+	// Check for common transient error patterns in error messages
+	errMsg := strings.ToLower(err.Error())
+	transientPatterns := []string{
+		"timeout",
+		"connection refused",
+		"connection reset",
+		"temporary failure",
+		"service unavailable",
+		"too many requests",
+		"throttled",
+	}
+
+	for _, pattern := range transientPatterns {
+		if strings.Contains(errMsg, pattern) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // loadTrustedCerts is used to load all the trusted certificates from the backend
 func (b *backend) loadTrustedCerts(ctx context.Context, storage logical.Storage, certName string) (pool *x509.CertPool, trustedCerts []*ParsedCert, trustedNonCAs []*ParsedCert, conf *ocsp.VerifyConfig) {
 	lock := locksutil.LockForKey(b.trustedCacheLocks, certName)
@@ -702,10 +734,16 @@ func (b *backend) loadTrustedCerts(ctx context.Context, storage logical.Storage,
 	}
 
 	conf = &ocsp.VerifyConfig{}
+	var hasTransientErrors bool
 	for _, name := range names {
 		entry, err := b.Cert(ctx, storage, strings.TrimPrefix(name, trustedCertPath))
 		if err != nil {
 			b.Logger().Error("failed to load trusted cert", "name", name, "error", err)
+			// Check if this could be a transient error (context cancellation, timeout, etc.)
+			// that might succeed on retry
+			if isTransientError(err) {
+				hasTransientErrors = true
+			}
 			continue
 		}
 		if entry == nil {
@@ -760,7 +798,9 @@ func (b *backend) loadTrustedCerts(ctx context.Context, storage logical.Storage,
 		}
 	}
 
-	if !b.trustedCacheDisabled.Load() {
+	// Only cache the results if we didn't encounter any transient errors
+	// This prevents poisoning the cache with partial certificate sets
+	if !b.trustedCacheDisabled.Load() && !hasTransientErrors {
 		entry := &trusted{
 			pool:          pool,
 			trusted:       trustedCerts,

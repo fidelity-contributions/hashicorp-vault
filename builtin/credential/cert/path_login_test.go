@@ -507,3 +507,56 @@ func TestCert_MetadataOnFailure(t *testing.T) {
 		},
 	})
 }
+
+func TestIsTransientError(t *testing.T) {
+	testCases := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{
+			name:     "nil error",
+			err:      nil,
+			expected: false,
+		},
+		{
+			name:     "context canceled",
+			err:      context.Canceled,
+			expected: true,
+		},
+		{
+			name:     "context deadline exceeded",
+			err:      context.DeadlineExceeded,
+			expected: true,
+		},
+		{
+			name:     "timeout error",
+			err:      fmt.Errorf("operation timeout"),
+			expected: true,
+		},
+		{
+			name:     "connection refused error",
+			err:      fmt.Errorf("connection refused"),
+			expected: true,
+		},
+		{
+			name:     "throttled error",
+			err:      fmt.Errorf("request throttled"),
+			expected: true,
+		},
+		{
+			name:     "non-transient error",
+			err:      fmt.Errorf("invalid certificate"),
+			expected: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := isTransientError(tc.err)
+			if result != tc.expected {
+				t.Errorf("isTransientError(%v) = %v, expected %v", tc.err, result, tc.expected)
+			}
+		})
+	}
+}

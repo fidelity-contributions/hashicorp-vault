@@ -1,0 +1,3 @@
+```release-note:bug
+auth/cert: Fix transient failures in loadTrustedCerts from poisoning the cache
+```
