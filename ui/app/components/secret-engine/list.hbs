@@ -140,7 +140,7 @@
               @text="Disable engines"
               @color="critical"
               @icon="trash"
-              {{on "click" (fn (mut this.enginesToDisable) this.selectedItems)}}
+              {{on "click" (fn this.setEnginesToDisable this.selectedItems)}}
             />
           </Hds::Layout::Flex>
         {{/if}}
@@ -171,28 +171,7 @@
 
       <:popupMenu as |rowData|>
         {{#let (this.getEngineResourceData rowData.path) as |backendData|}}
-          <Hds::Dropdown @isInline={{true}} as |dd|>
-            <dd.ToggleIcon
-              @icon="more-horizontal"
-              @text="{{if backendData.isSupportedBackend 'supported' 'unsupported'}} secrets engine menu"
-              @hasChevron={{false}}
-              data-test-popup-menu-trigger
-            />
-            <dd.Interactive
-              @route={{backendData.backendConfigurationLink}}
-              @model={{backendData.id}}
-              data-test-popup-menu="View configuration"
-              @icon="settings"
-            >View configuration</dd.Interactive>
-            {{#if (not-eq backendData.type "cubbyhole")}}
-              <dd.Interactive
-                @color="critical"
-                {{on "click" (fn (mut this.engineToDisable) backendData)}}
-                data-test-popup-menu="Delete"
-                @icon="trash"
-              >Delete</dd.Interactive>
-            {{/if}}
-          </Hds::Dropdown>
+          <ManageDropdown @model={{backendData}} @variant="icon" @configRoute={{backendData.backendConfigurationLink}} />
         {{/let}}
       </:popupMenu>
     </ListTable>
@@ -200,16 +179,6 @@
     <EmptyState @title="No Secrets engines found" />
   {{/if}}
   {{! End Table Section }}
-
-  {{#if this.engineToDisable}}
-    <ConfirmModal
-      @color="critical"
-      @confirmMessage="Any data in this engine will be permanently deleted."
-      @confirmTitle="Disable engine?"
-      @onClose={{fn (mut this.engineToDisable) null}}
-      @onConfirm={{perform this.disableEngine this.engineToDisable}}
-    />
-  {{/if}}
 
   {{#if this.enginesToDisable}}
     <ConfirmModal

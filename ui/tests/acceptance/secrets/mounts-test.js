@@ -4,35 +4,34 @@
  */
 
 import {
+  click,
   currentRouteName,
   currentURL,
-  settled,
-  click,
-  findAll,
   fillIn,
-  visit,
+  findAll,
+  settled,
   typeIn,
+  visit,
   waitFor,
 } from '@ember/test-helpers';
 import { clickTrigger } from 'ember-power-select/test-support/helpers';
-import { module, test, skip } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
+import { module, skip, test } from 'qunit';
 import { v4 as uuidv4 } from 'uuid';
 import { runCmd, tokenWithPolicyCmd } from 'vault/tests/helpers/commands';
 
 import { create } from 'ember-cli-page-object';
-import page from 'vault/tests/pages/settings/mount-secret-backend';
-import { login } from 'vault/tests/helpers/auth/auth-helpers';
-import consoleClass from 'vault/tests/pages/components/console/ui-panel';
-import mountSecrets from 'vault/tests/pages/settings/mount-secret-backend';
-import { supportedSecretBackends } from 'vault/helpers/supported-secret-backends';
-import { GENERAL } from 'vault/tests/helpers/general-selectors';
-import { SECRET_ENGINE_SELECTORS as SES } from 'vault/tests/helpers/secret-engine/secret-engine-selectors';
-import { mountBackend } from 'vault/tests/helpers/components/mount-backend-form-helpers';
-import { SELECTORS as OIDC } from 'vault/tests/helpers/oidc-config';
-import { adminOidcCreateRead, adminOidcCreate } from 'vault/tests/helpers/secret-engine/policy-generator';
-import { filterEnginesByMountCategory } from 'vault/utils/all-engines-metadata';
 import engineDisplayData from 'vault/helpers/engines-display-data';
+import { supportedSecretBackends } from 'vault/helpers/supported-secret-backends';
+import { login } from 'vault/tests/helpers/auth/auth-helpers';
+import { mountBackend } from 'vault/tests/helpers/components/mount-backend-form-helpers';
+import { GENERAL } from 'vault/tests/helpers/general-selectors';
+import { SELECTORS as OIDC } from 'vault/tests/helpers/oidc-config';
+import { adminOidcCreate, adminOidcCreateRead } from 'vault/tests/helpers/secret-engine/policy-generator';
+import { SECRET_ENGINE_SELECTORS as SES } from 'vault/tests/helpers/secret-engine/secret-engine-selectors';
+import consoleClass from 'vault/tests/pages/components/console/ui-panel';
+import { default as mountSecrets, default as page } from 'vault/tests/pages/settings/mount-secret-backend';
+import { filterEnginesByMountCategory } from 'vault/utils/all-engines-metadata';
 
 const consoleComponent = create(consoleClass);
 
@@ -152,6 +151,7 @@ module('Acceptance | secrets-engines/enable', function (hooks) {
 
     await page.secretList();
     await settled();
+    await fillIn(GENERAL.inputSearch('secret-engine-path'), path);
     assert
       .dom(GENERAL.tableData(`${path}/`, 'path'))
       .exists({ count: 1 }, 'renders only one instance of the engine');
