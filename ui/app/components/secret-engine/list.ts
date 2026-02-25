@@ -3,20 +3,20 @@
  * SPDX-License-Identifier: BUSL-1.1
  */
 
-import Component from '@glimmer/component';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { dropTask } from 'ember-concurrency';
 import engineDisplayData from 'vault/helpers/engines-display-data';
-import { getEffectiveEngineType } from 'vault/utils/external-plugin-helpers';
 import { ALL_ENGINES } from 'vault/utils/all-engines-metadata';
+import { getEffectiveEngineType } from 'vault/utils/external-plugin-helpers';
 
+import type RouterService from '@ember/routing/router-service';
+import type SecretsEngineResource from 'vault/resources/secrets/engine';
 import type ApiService from 'vault/services/api';
 import type FlashMessageService from 'vault/services/flash-messages';
 import type NamespaceService from 'vault/services/namespace';
-import type RouterService from '@ember/routing/router-service';
-import type SecretsEngineResource from 'vault/resources/secrets/engine';
 import type VersionService from 'vault/services/version';
 import type WizardService from 'vault/services/wizard';
 import { WIZARD_ID } from '../wizard/secret-engines/secret-engines-wizard';
@@ -45,7 +45,6 @@ export default class SecretEngineList extends Component<Args> {
   @service declare readonly wizard: WizardService;
 
   @tracked secretEngineOptions: Array<string> | [] = [];
-  @tracked engineToDisable: SecretsEngineResource | undefined = undefined;
   @tracked enginesToDisable: Array<SecretsEngineResource> | null = null;
 
   @tracked engineTypeFilters: Array<string> = [];
@@ -289,6 +288,16 @@ export default class SecretEngineList extends Component<Args> {
     this.selectedItems = tableData.selectedRowsKeys;
   }
 
+  @action
+  setEnginesToDisable(engines: Array<SecretsEngineResource>) {
+    this.enginesToDisable = engines;
+  }
+
+  @action
+  clearEnginesToDisable() {
+    this.enginesToDisable = null;
+  }
+
   async disableSingleEngine(engine: SecretsEngineResource) {
     const { engineType, id, path } = engine;
     try {
@@ -302,14 +311,13 @@ export default class SecretEngineList extends Component<Args> {
     }
   }
 
-  @dropTask
-  *disableMultipleEngines(enginePathsToDisable: Array<string>) {
+  disableMultipleEngines = dropTask(async (enginePathsToDisable: Array<string>) => {
     const enginesToDisable = this.displayableBackends.filter((engine: SecretsEngineResource) =>
       enginePathsToDisable.includes(engine.path)
     );
     try {
       for (const engine of enginesToDisable) {
-        yield this.disableSingleEngine(engine);
+        await this.disableSingleEngine(engine);
       }
 
       // Navigate once all operations are complete
@@ -317,15 +325,5 @@ export default class SecretEngineList extends Component<Args> {
     } finally {
       this.enginesToDisable = null;
     }
-  }
-
-  @dropTask
-  *disableEngine(engine: SecretsEngineResource) {
-    try {
-      yield this.disableSingleEngine(engine);
-      this.router.transitionTo('vault.cluster.secrets.backends');
-    } finally {
-      this.engineToDisable = undefined;
-    }
-  }
+  });
 }
