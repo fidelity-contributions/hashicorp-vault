@@ -7,10 +7,10 @@ import { action } from '@ember/object';
 import { service } from '@ember/service';
 import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
-import { dropTask } from 'ember-concurrency';
 import engineDisplayData from 'vault/helpers/engines-display-data';
 import { ALL_ENGINES } from 'vault/utils/all-engines-metadata';
 import { getEffectiveEngineType } from 'vault/utils/external-plugin-helpers';
+import { WIZARD_ID } from '../wizard/secret-engines/secret-engines-wizard';
 
 import type RouterService from '@ember/routing/router-service';
 import type SecretsEngineResource from 'vault/resources/secrets/engine';
@@ -19,7 +19,6 @@ import type FlashMessageService from 'vault/services/flash-messages';
 import type NamespaceService from 'vault/services/namespace';
 import type VersionService from 'vault/services/version';
 import type WizardService from 'vault/services/wizard';
-import { WIZARD_ID } from '../wizard/secret-engines/secret-engines-wizard';
 
 /**
  * @module SecretEngineList handles the display of the list of secret engines, including the filtering.
@@ -44,9 +43,6 @@ export default class SecretEngineList extends Component<Args> {
   @service declare readonly version: VersionService;
   @service declare readonly wizard: WizardService;
 
-  @tracked secretEngineOptions: Array<string> | [] = [];
-  @tracked enginesToDisable: Array<SecretsEngineResource> | null = null;
-
   @tracked engineTypeFilters: Array<string> = [];
   @tracked engineVersionFilters: Array<string> = [];
   @tracked searchText = '';
@@ -54,8 +50,6 @@ export default class SecretEngineList extends Component<Args> {
   // search text for dropdown filters
   @tracked typeSearchText = '';
   @tracked versionSearchText = '';
-
-  @tracked selectedItems = Array<string>();
 
   @tracked shouldRenderIntroModal = false;
   wizardId = WIZARD_ID;
@@ -282,48 +276,4 @@ export default class SecretEngineList extends Component<Args> {
     this.engineTypeFilters = [];
     this.engineVersionFilters = [];
   }
-
-  @action
-  updateSelectedItems(tableData: { selectedRowsKeys: string[] }) {
-    this.selectedItems = tableData.selectedRowsKeys;
-  }
-
-  @action
-  setEnginesToDisable(engines: Array<SecretsEngineResource>) {
-    this.enginesToDisable = engines;
-  }
-
-  @action
-  clearEnginesToDisable() {
-    this.enginesToDisable = null;
-  }
-
-  async disableSingleEngine(engine: SecretsEngineResource) {
-    const { engineType, id, path } = engine;
-    try {
-      await this.api.sys.mountsDisableSecretsEngine(id);
-      this.flashMessages.success(`The ${engineType} Secrets Engine at ${path} has been disabled.`);
-    } catch (err) {
-      const { message } = await this.api.parseError(err);
-      this.flashMessages.danger(
-        `There was an error disabling the ${engineType} Secrets Engine at ${path}: ${message}.`
-      );
-    }
-  }
-
-  disableMultipleEngines = dropTask(async (enginePathsToDisable: Array<string>) => {
-    const enginesToDisable = this.displayableBackends.filter((engine: SecretsEngineResource) =>
-      enginePathsToDisable.includes(engine.path)
-    );
-    try {
-      for (const engine of enginesToDisable) {
-        await this.disableSingleEngine(engine);
-      }
-
-      // Navigate once all operations are complete
-      this.router.transitionTo('vault.cluster.secrets.backends');
-    } finally {
-      this.enginesToDisable = null;
-    }
-  });
 }

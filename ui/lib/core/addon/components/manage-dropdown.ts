@@ -7,6 +7,7 @@ import { action } from '@ember/object';
 import { service } from '@ember/service';
 import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
+import routerLookup from 'core/utils/router-lookup';
 
 import type RouterService from '@ember/routing/router-service';
 import type SecretsEngineResource from 'vault/resources/secrets/engine';
@@ -18,20 +19,20 @@ import type FlashMessageService from 'vault/services/flash-messages';
  * Reusable component for displaying the Manage dropdown used in secret engine headers & secret engine mount list.
  *
  * @example
- * // In main app page headers and list components — uses the resource getter for the full absolute route
+ * In main app page headers and list components — uses the resource getter for the full absolute route
  * <ManageDropdown
  *   @model={{this.backendModel}}
  *   @configRoute={{this.backendConfigurationLink}}
  * />
  *
- * // In Ember engine templates (pki, kubernetes, ldap, kmip, kv) — pass the short relative route,
- * // since HDS @route resolves relative to the engine's router mount
+ * In Ember engine templates (pki, kubernetes, ldap, kmip, kv) — pass the short relative route,
+ * since HDS @route resolves relative to the engine's router mount
  * <ManageDropdown
  *   @model={{@model}}
  *   @configRoute="configuration"
  * />
  *
- * // With custom menu items (like KV's Generate policy) — icon variant in a Ember engine list
+ * With custom menu items (like KV's Generate policy) — icon variant in a Ember engine list
  * <ManageDropdown
  *   @model={{@backendModel}}
  *   @configRoute="configuration"
@@ -52,12 +53,14 @@ interface Args {
 }
 
 export default class ManageDropdown extends Component<Args> {
-  @service declare readonly router: RouterService;
-  @service('app-router') declare readonly appRouter: RouterService;
   @service declare readonly api: ApiService;
   @service declare readonly flashMessages: FlashMessageService;
 
   @tracked engineToDisable: SecretsEngineResource | undefined = undefined;
+
+  get router(): RouterService {
+    return routerLookup(this);
+  }
 
   get isIcon() {
     return this.args.variant === 'icon';
@@ -72,17 +75,11 @@ export default class ManageDropdown extends Component<Args> {
     return this.args.model.type !== 'cubbyhole';
   }
 
-  transitionToBackends() {
-    // First try using the router service, which is available in most contexts
-    if (this.router) {
-      this.router.transitionTo('vault.cluster.secrets.backends');
-      return;
-    }
-
-    // Fallback for ember-engine components which use appRouter instead of router service
-    if (this.appRouter) {
-      this.appRouter.transitionTo('vault.cluster.secrets.backends');
-    }
+  transitionOrRefresh() {
+    const { currentRouteName } = this.router;
+    // Call refresh() when currently on the route so data properly refreshes even when in a namespace.
+    const method = currentRouteName === 'vault.cluster.secrets.backends' ? 'refresh' : 'transitionTo';
+    this.router[method]('vault.cluster.secrets.backends');
   }
 
   @action
@@ -103,7 +100,7 @@ export default class ManageDropdown extends Component<Args> {
       try {
         await this.api.sys.mountsDisableSecretsEngine(id);
         this.flashMessages.success(`The ${engineType} Secrets Engine at ${path} has been disabled.`);
-        this.transitionToBackends();
+        this.transitionOrRefresh();
       } catch (error) {
         const { message } = await this.api.parseError(error);
         this.flashMessages.danger(

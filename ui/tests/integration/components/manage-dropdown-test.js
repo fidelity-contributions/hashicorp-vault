@@ -130,6 +130,62 @@ module('Integration | Component | manage-dropdown | Configure link', function (h
     });
   };
 
+  hooks.beforeEach(function () {
+    const router = this.owner.lookup('service:router');
+    this.transitionStub = sinon.stub(router, 'transitionTo');
+    this.refreshStub = sinon.stub(router, 'refresh');
+    this.currentRouteStub = sinon.stub(router, 'currentRouteName');
+    const api = this.owner.lookup('service:api');
+    this.mountDisableApiStub = sinon.stub(api.sys, 'mountsDisableSecretsEngine');
+  });
+
+  hooks.afterEach(function () {
+    this.transitionStub.restore();
+    this.refreshStub.restore();
+    this.mountDisableApiStub.restore();
+  });
+
+  test('it disables a mount', async function (assert) {
+    this.model = makeModel({ type: 'ldap', id: 'ldap' });
+    await render(
+      hbs`<ManageDropdown @model={{this.model}} @variant="icon" @configRoute={{this.model.backendConfigurationLink}} />`
+    );
+    await click(GENERAL.menuTrigger);
+    await click(GENERAL.menuItem('Delete'));
+    await click(GENERAL.confirmButton);
+    const [id] = this.mountDisableApiStub.lastCall.args;
+    assert.strictEqual(id, 'ldap', 'it calls disable with the secret engine id');
+  });
+
+  test('it calls refresh() when current route is secrets.backends', async function (assert) {
+    this.currentRouteStub.value('vault.cluster.secrets.backends');
+    this.model = makeModel({ type: 'ldap', id: 'ldap' });
+    await render(
+      hbs`<ManageDropdown @model={{this.model}} @variant="icon" @configRoute={{this.model.backendConfigurationLink}} />`
+    );
+    await click(GENERAL.menuTrigger);
+    await click(GENERAL.menuItem('Delete'));
+    await click(GENERAL.confirmButton);
+    assert.true(
+      this.refreshStub.calledOnce,
+      'refresh is called because the current route is vault.cluster.secrets.backends'
+    );
+    assert.true(this.transitionStub.notCalled, 'transitionTo is not called');
+  });
+
+  test('it calls transitionTo() when current route is NOT secrets.backends', async function (assert) {
+    this.currentRouteStub.value('vault.cluster.secrets.backend.ldap.overview');
+    this.model = makeModel({ type: 'ldap', id: 'ldap' });
+    await render(
+      hbs`<ManageDropdown @model={{this.model}} @variant="icon" @configRoute={{this.model.backendConfigurationLink}} />`
+    );
+    await click(GENERAL.menuTrigger);
+    await click(GENERAL.menuItem('Delete'));
+    await click(GENERAL.confirmButton);
+    assert.true(this.transitionStub.calledOnce, 'transitionTo() is called');
+    assert.true(this.refreshStub.notCalled, 'refresh() is not called');
+  });
+
   TEST_CASES.forEach(({ label, type, version, expectedRoute }) => {
     test(`Configure link routes correctly for ${label}`, async function (assert) {
       const routing = this.owner.lookup('service:-routing');
