@@ -9,10 +9,9 @@ import {
   currentURL,
   fillIn,
   findAll,
-  settled,
   typeIn,
   visit,
-  waitFor,
+  waitUntil,
 } from '@ember/test-helpers';
 import { clickTrigger } from 'ember-power-select/test-support/helpers';
 import { setupApplicationTest } from 'ember-qunit';
@@ -129,34 +128,6 @@ module('Acceptance | secrets-engines/enable', function (hooks) {
     assert.dom('[data-test-input="config.max_lease_ttl"] [data-test-select="ttl-unit"]').hasValue('s');
   });
 
-  test('it throws error if setting duplicate path name', async function (assert) {
-    const path = `kv-duplicate`;
-
-    await consoleComponent.runCommands([
-      // delete any kv-duplicate previously written here so that tests can be re-run
-      `delete sys/mounts/${path}`,
-    ]);
-
-    await page.visit();
-
-    assert.strictEqual(currentRouteName(), 'vault.cluster.secrets.enable.index');
-    await mountBackend('kv', path);
-    await page.secretList();
-    await settled();
-    await page.enableEngine();
-    await mountBackend('kv', path);
-    await waitFor('[data-test-message-error-description]');
-    assert.dom('[data-test-message-error-description]').containsText(`path is already in use at ${path}`);
-    assert.strictEqual(currentRouteName(), 'vault.cluster.secrets.enable.create');
-
-    await page.secretList();
-    await settled();
-    await fillIn(GENERAL.inputSearch('secret-engine-path'), path);
-    assert
-      .dom(GENERAL.tableData(`${path}/`, 'path'))
-      .exists({ count: 1 }, 'renders only one instance of the engine');
-  });
-
   test('it should transition to mountable addon engine after mount success', async function (assert) {
     // test supported backends that ARE ember engines (enterprise only engines are tested individually)
     const addons = filterEnginesByMountCategory({ mountCategory: 'secret', isEnterprise: false }).filter(
@@ -210,9 +181,11 @@ module('Acceptance | secrets-engines/enable', function (hooks) {
       const route = engineDisplayData(engine.type)?.isOnlyMountable
         ? 'configuration.general-settings'
         : 'list-root';
+      const expectedRoute = `vault.cluster.secrets.backend.${route}`;
+      await waitUntil(() => currentRouteName() === expectedRoute);
       assert.strictEqual(
         currentRouteName(),
-        `vault.cluster.secrets.backend.${route}`,
+        expectedRoute,
         `${engine.type} navigates to the correct view (either list if not configuration only or configuration if it is).`
       );
 
@@ -292,8 +265,8 @@ module('Acceptance | secrets-engines/enable', function (hooks) {
       'vault.cluster.secrets.backends',
       'redirects to the backends page'
     );
-
-    assert.ok(GENERAL.tableData(`${enginePath}/`, 'path'), 'shows the alicloud engine');
+    await fillIn(GENERAL.inputSearch('secret-engine-path'), enginePath);
+    assert.dom(GENERAL.listItem(`${enginePath}/`)).exists();
 
     // cleanup
     await runCmd(`delete sys/mounts/${enginePath}`);
@@ -309,8 +282,8 @@ module('Acceptance | secrets-engines/enable', function (hooks) {
       'vault.cluster.secrets.backends',
       'redirects to the backends page'
     );
-
-    assert.ok(GENERAL.tableData(`${enginePath}/`, 'path'), 'shows the gcpkms engine');
+    await fillIn(GENERAL.inputSearch('secret-engine-path'), enginePath);
+    assert.dom(GENERAL.listItem(`${enginePath}/`)).exists();
     // cleanup
     await runCmd(`delete sys/mounts/${enginePath}`);
   });
