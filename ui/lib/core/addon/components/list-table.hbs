@@ -2,9 +2,7 @@
   Copyright IBM Corp. 2016, 2025
   SPDX-License-Identifier: BUSL-1.1
 }}
-{{#if (has-block "selectedItems")}}
-  {{yield to="selectedItems"}}
-{{/if}}
+
 <Hds::AdvancedTable
   @model={{this.paginatedTableData}}
   @columns={{@columns}}

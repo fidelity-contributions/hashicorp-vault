@@ -114,37 +114,7 @@
 
   {{! Table Section }}
   {{#if this.sortedDisplayableBackends}}
-    <ListTable
-      class="has-top-margin-xs"
-      @columns={{this.tableColumns}}
-      @selectionKeyField="path"
-      @data={{this.sortedDisplayableBackends}}
-      @onSelectionChange={{this.updateSelectedItems}}
-    >
-      <:selectedItems>
-        {{#if this.selectedItems}}
-          <Hds::Layout::Flex
-            @gap="8"
-            @direction="row"
-            @justify="end"
-            @align="center"
-            class="has-bottom-margin-s has-top-margin-negative-xxl"
-            @isInline="true"
-          >
-            <Hds::Text::Body role="status" @tag="p" @size="200" @color="foreground-primary">
-              {{this.selectedItems.length}}
-              selected out of
-              {{this.sortedDisplayableBackends.length}}
-            </Hds::Text::Body>
-            <Hds::Button
-              @text="Disable engines"
-              @color="critical"
-              @icon="trash"
-              {{on "click" (fn this.setEnginesToDisable this.selectedItems)}}
-            />
-          </Hds::Layout::Flex>
-        {{/if}}
-      </:selectedItems>
+    <ListTable class="has-top-margin-xs" @columns={{this.tableColumns}} @data={{this.sortedDisplayableBackends}}>
       <:customTableItem as |itemData|>
         {{#let (this.getEngineResourceData itemData.path) as |backendData|}}
           {{! Only render if we have backendData, so this doesn't try to render while data for the list refreshes }}
@@ -184,16 +154,5 @@
     </ListTable>
   {{else}}
     <EmptyState @title="No Secrets engines found" />
-  {{/if}}
-  {{! End Table Section }}
-
-  {{#if this.enginesToDisable}}
-    <ConfirmModal
-      @color="critical"
-      @confirmMessage="Any data in these engines will be permanently deleted."
-      @confirmTitle="Disable engines?"
-      @onClose={{fn (mut this.enginesToDisable) null}}
-      @onConfirm={{perform this.disableMultipleEngines this.enginesToDisable}}
-    />
   {{/if}}
 {{/if}}
