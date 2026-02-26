@@ -254,7 +254,10 @@ func (c *Core) UpdateMaxRoleAndManagedKeyCounts(ctx context.Context, localPathPr
 	defer cb.BillingStorageLock.Unlock()
 
 	local := localPathPrefix == billing.LocalPrefix
-	currentRoleCounts, currentManagedKeyCounts := c.getRoleAndManagedKeyCountsInternal(local, !local, true)
+	currentRoleCounts, currentManagedKeyCounts, err := c.getRoleAndManagedKeyCountsInternal(local, !local, true)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// get max role counts
 	maxRoleCounts, err := c.updateMaxRoleCounts(ctx, currentRoleCounts, localPathPrefix, currentMonth)
