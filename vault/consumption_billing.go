@@ -80,18 +80,18 @@ func (c *Core) consumptionBillingMetricsWorker(ctx context.Context) {
 			}
 			return d
 		}
-		endOfMonth := clock.NewTimer(untilNextMonth(clock.Now()))
+		endOfMonth := clock.NewTimer(untilNextMonth(clock.Now().UTC()))
 		for {
 			select {
 			case <-ticker.C:
-				if err := c.updateBillingMetrics(ctx, clock.Now()); err != nil {
+				if err := c.updateBillingMetrics(ctx, clock.Now().UTC()); err != nil {
 					c.logger.Error("error updating billing metrics", "error", err)
 				}
 			case <-ctx.Done():
 				return
 			case <-endOfMonth.C:
 				// Reset the timer for the next month
-				currentMonth := clock.Now()
+				currentMonth := clock.Now().UTC()
 				c.logger.Debug("reached end of month, resetting timer", "currentMonth", currentMonth)
 				previousMonth := timeutil.StartOfPreviousMonth(currentMonth)
 				// On month boundary, we need to flush the current in-memory counts to storage
