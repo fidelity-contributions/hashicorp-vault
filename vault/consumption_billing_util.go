@@ -444,14 +444,13 @@ func (c *Core) getStoredTotpKeyCountsLocked(ctx context.Context, localPathPrefix
 }
 
 func (c *Core) GetBillingSubView() (*BarrierView, bool) {
-	c.mountsLock.RLock()
-	view := c.systemBarrierView
-	c.mountsLock.RUnlock()
-
-	if view == nil {
-		return nil, false
+	c.consumptionBillingLock.RLock()
+	defer c.consumptionBillingLock.RUnlock()
+	if c.consumptionBillingSubView == nil {
+		// Initialize the consumption billing sub view
+		c.consumptionBillingSubView = c.systemBarrierView.SubView(billing.BillingSubPath)
 	}
-	return view.SubView(billing.BillingSubPath), true
+	return c.consumptionBillingSubView, true
 }
 
 // storeTransitCallCountsLocked must be called with BillingStorageLock held
