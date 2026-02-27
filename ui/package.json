@@ -34,7 +34,7 @@
     "start2": "pnpm build:jsondiffpatch && ember server --proxy=http://127.0.0.1:8202 --port=4202",
     "start:chroot": "ember server --proxy=http://127.0.0.1:8300 --port=4300",
     "lint": "concurrently --kill-others-on-fail -P -c \"auto\" -n lint:js,lint:hbs,lint:types \"pnpm:lint:js:quiet\" \"pnpm:lint:hbs:quiet\" \"pnpm:lint:types\"",
-    "test": "pnpm lint && node scripts/start-vault.js",
+    "test": "node scripts/start-vault.js",
     "test:enos": "concurrently --kill-others-on-fail -P -c \"auto\" -n lint:js,lint:hbs,lint:types,enos \"pnpm:lint:js:quiet\" \"pnpm:lint:hbs:quiet\" \"pnpm:lint:types\" \"node scripts/enos-test-ember.js {@}\" --",
     "test:oss": "pnpm test -f='!enterprise'",
     "test:ent": "node scripts/start-vault.js -f='enterprise'",
