@@ -65,7 +65,7 @@ func (b *SystemBackend) useCaseConsumptionBillingPaths() []*framework.Path {
 func (b *SystemBackend) handleUseCaseConsumption(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	refreshData := data.Get("refresh_data").(bool)
 
-	currentMonth := time.Now()
+	currentMonth := time.Now().UTC()
 	previousMonth := timeutil.StartOfPreviousMonth(currentMonth)
 
 	warnings := make([]string, 0)
