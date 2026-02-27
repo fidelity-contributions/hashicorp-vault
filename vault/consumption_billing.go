@@ -32,6 +32,11 @@ func (c *Core) setupConsumptionBilling(ctx context.Context) error {
 		},
 		Logger: logger,
 	}
+	if c.systemBarrierView != nil {
+		c.consumptionBillingSubView = c.systemBarrierView.SubView(billing.BillingSubPath)
+	} else {
+		c.consumptionBilling.Logger.Error("system barrier view is not initialized, consumption billing view is not initialized")
+	}
 	c.consumptionBillingLock.Unlock()
 
 	c.postUnsealFuncs = append(c.postUnsealFuncs, func() {
