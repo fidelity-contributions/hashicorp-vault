@@ -3444,7 +3444,19 @@ func (ts *TokenStore) handleLookup(ctx context.Context, req *logical.Request, da
 		return logical.ErrorResponse("missing token ID"), logical.ErrInvalidRequest
 	}
 	if IsEnterpriseToken(id) {
-		id = getEnterpriseTokenId(req.EnterpriseTokenMetadata)
+		// If the token specified in the request body is different from the caller's
+		// token, resolve the token ID based on the body token's claims (JTI) instead
+		// of req.EnterpriseTokenMetadata, otherwise we may silently return the caller's
+		// own token entry or fail for non-Enterprise token callers.
+		if id == req.ClientToken {
+			id = getEnterpriseTokenId(req.EnterpriseTokenMetadata)
+		} else {
+			resolvedID, err := resolveEnterpriseTokenIDForLookup(id)
+			if err != nil {
+				return logical.ErrorResponse("invalid token"), logical.ErrInvalidRequest
+			}
+			id = resolvedID
+		}
 	}
 	lock := locksutil.LockForKey(ts.tokenLocks, id)
 	lock.RLock()
