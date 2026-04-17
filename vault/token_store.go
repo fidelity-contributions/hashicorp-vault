@@ -2684,7 +2684,8 @@ func (ts *TokenStore) handleCreate(ctx context.Context, req *logical.Request, d 
 
 // handleCreateCommon handles the auth/token/create path for creation of new tokens
 func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Request, d *framework.FieldData, orphan bool, role *tsRoleEntry) (*logical.Response, error) {
-	if !orphan && IsEnterpriseToken(req.ClientToken) {
+	normalizedClientToken := normalizeEnterpriseTokenToID(req.ClientToken)
+	if !orphan && IsEnterpriseTokenId(normalizedClientToken) {
 		return logical.ErrorResponse("enterprise tokens cannot create child tokens"), logical.ErrInvalidRequest
 	}
 
@@ -3355,7 +3356,8 @@ func (ts *TokenStore) handleRevokeTree(ctx context.Context, req *logical.Request
 }
 
 func (ts *TokenStore) revokeCommon(ctx context.Context, req *logical.Request, data *framework.FieldData, id string) (*logical.Response, error) {
-	if IsEnterpriseToken(id) {
+	normalizedID := normalizeEnterpriseTokenToID(id)
+	if IsEnterpriseTokenId(normalizedID) {
 		return logical.ErrorResponse("cannot revoke ent token"), nil
 	}
 	te, err := ts.Lookup(ctx, id)
@@ -3402,7 +3404,8 @@ func (ts *TokenStore) handleRevokeOrphan(ctx context.Context, req *logical.Reque
 		return logical.ErrorResponse("missing token ID"), logical.ErrInvalidRequest
 	}
 
-	if IsEnterpriseToken(id) {
+	normalizedID := normalizeEnterpriseTokenToID(id)
+	if IsEnterpriseTokenId(normalizedID) {
 		return logical.ErrorResponse("enterprise token cannot be revoked"), nil
 	}
 
@@ -3569,7 +3572,8 @@ func (ts *TokenStore) handleRenew(ctx context.Context, req *logical.Request, dat
 	if id == "" {
 		return logical.ErrorResponse("missing token ID"), logical.ErrInvalidRequest
 	}
-	if IsEnterpriseToken(id) {
+	normalizedID := normalizeEnterpriseTokenToID(id)
+	if IsEnterpriseTokenId(normalizedID) {
 		return logical.ErrorResponse("enterprise tokens cannot be renewed"), nil
 	}
 	incrementRaw := data.Get("increment").(int)

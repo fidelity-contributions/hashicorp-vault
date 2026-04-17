@@ -153,6 +153,11 @@ type Request struct {
 	// EnterpriseTokenAuthorizationDetails stores enterprise token authorization details.
 	EnterpriseTokenAuthorizationDetails []AuthorizationDetail `json:"enterprise_token_authorization_details,omitempty" structs:"enterprise_token_authorization_details" mapstructure:"enterprise_token_authorization_details"`
 
+	// EnterpriseTokenAuthorizationDetailsPresent indicates whether the inbound
+	// enterprise token included an authorization_details claim at all. This lets
+	// callers distinguish "claim missing" from "claim present but empty".
+	EnterpriseTokenAuthorizationDetailsPresent bool `json:"enterprise_token_authorization_details_present,omitempty" structs:"enterprise_token_authorization_details_present" mapstructure:"enterprise_token_authorization_details_present"`
+
 	// ClientTokenAccessor is provided to the core so that the it can get
 	// logged as part of request audit logging.
 	ClientTokenAccessor string `json:"client_token_accessor" structs:"client_token_accessor" mapstructure:"client_token_accessor" sentinel:""`
@@ -279,8 +284,11 @@ type Request struct {
 	// client token.
 	ClientID string `json:"client_id" structs:"client_id" mapstructure:"client_id" sentinel:""`
 
-	// InboundSSCToken is the token that arrives on an inbound request, supplied
-	// by the vault user.
+	// InboundSSCToken stores the original token value as supplied by the caller
+	// on the inbound request (header/body), before token decoding or
+	// normalization (for example SSCT decoding or enterprise token normalization
+	// to internal IDs). This allows response/forwarding paths to preserve the
+	// caller-visible token representation when needed.
 	InboundSSCToken string
 
 	// When a request has been forwarded, contains information of the host the request was forwarded 'from'
