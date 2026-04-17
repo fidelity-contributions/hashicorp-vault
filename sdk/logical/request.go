@@ -147,6 +147,9 @@ type Request struct {
 	// EnterpriseTokenIssuer stores the enterprise token issuer.
 	EnterpriseTokenIssuer string `json:"enterprise_token_issuer,omitempty" structs:"enterprise_token_issuer" mapstructure:"enterprise_token_issuer"`
 
+	// EnterpriseTokenTransaction stores the enterprise token transaction claim.
+	EnterpriseTokenTransaction string `json:"enterprise_token_transaction,omitempty" structs:"enterprise_token_transaction" mapstructure:"enterprise_token_transaction"`
+
 	// EnterpriseTokenAudience stores enterprise token audience values.
 	EnterpriseTokenAudience []string `json:"enterprise_token_audience,omitempty" structs:"enterprise_token_audience" mapstructure:"enterprise_token_audience"`
 
