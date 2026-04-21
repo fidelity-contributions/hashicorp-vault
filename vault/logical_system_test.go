@@ -7383,9 +7383,6 @@ func TestPathInternalUICustomMessagesCommon(t *testing.T) {
 func TestGetLeaderStatus_RedactionSettings(t *testing.T) {
 	testCluster := NewTestCluster(t, nil, nil)
 
-	testCluster.Start()
-	defer testCluster.Cleanup()
-
 	testCore := testCluster.Cores[0]
 
 	// Check with no redaction settings
@@ -7421,9 +7418,6 @@ func TestGetSealStatus_RedactionSettings(t *testing.T) {
 	testCluster := NewTestCluster(t, &CoreConfig{
 		ClusterName: "secret-cluster-name",
 	}, nil)
-
-	testCluster.Start()
-	defer testCluster.Cleanup()
 
 	testCore := testCluster.Cores[0]
 

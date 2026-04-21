@@ -53,7 +53,7 @@ func TestRaft_Configuration_Docker(t *testing.T) {
 	defer cluster.Cleanup()
 	rafttest.Raft_Configuration_Test(t, cluster)
 
-	if err := cluster.AddNode(context.TODO(), opts); err != nil {
+	if err := cluster.AddNode(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
 	rafttest.Raft_Configuration_Test(t, cluster)
