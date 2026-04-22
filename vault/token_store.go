@@ -1518,17 +1518,16 @@ func (ts *TokenStore) Lookup(ctx context.Context, id string) (*logical.TokenEntr
 	if id == "" {
 		return nil, fmt.Errorf("cannot lookup blank token")
 	}
+	normalizedID := normalizeEnterpriseTokenToID(id)
 
 	// If it starts with "b." it's a batch token
-	if IsBatchToken(id) {
-		return ts.lookupBatchToken(ctx, id)
+	if IsBatchToken(normalizedID) {
+		return ts.lookupBatchToken(ctx, normalizedID)
 	}
-
-	lock := locksutil.LockForKey(ts.tokenLocks, id)
+	lock := locksutil.LockForKey(ts.tokenLocks, normalizedID)
 	lock.RLock()
 	defer lock.RUnlock()
-
-	return ts.lookupInternal(ctx, id, false, false)
+	return ts.lookupInternal(ctx, normalizedID, false, false)
 }
 
 func (ts *TokenStore) stripBatchPrefix(id string) string {
