@@ -169,6 +169,7 @@ func NewSystemBackend(core *Core, logger log.Logger, config *logical.BackendConf
 		PathsSpecial: &logical.Paths{
 			Root: []string{
 				"auth/*",
+				"mounts/auth/+/tune",
 				"remount",
 				"audit",
 				"audit/*",
