@@ -10,3 +10,7 @@ import "context"
 func (c *Core) validateSyntheticAliasAccessor(context.Context, string) (bool, error) {
 	return false, nil
 }
+
+func (c *Core) generateSyntheticAliasAccessor(context.Context, string) (string, error) {
+	return "", nil
+}
