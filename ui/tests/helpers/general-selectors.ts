@@ -195,4 +195,5 @@ export const GENERAL = {
   tooltip: (label: string) => `[data-test-tooltip="${label}"]`,
   tooltipText: '.hds-tooltip-container',
   textDisplay: (attr: string) => `[data-test-text-display="${attr}"]`,
+  textBody: (attr: string) => `[data-test-text-body="${attr}"]`,
 };
