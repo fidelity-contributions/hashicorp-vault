@@ -199,6 +199,7 @@ var _ MountLister = &Core{}
 
 type SyntheticAliasAccessorValidator interface {
 	validateSyntheticAliasAccessor(context.Context, string) (bool, error)
+	generateSyntheticAliasAccessor(context.Context, string) (string, error)
 }
 
 var _ SyntheticAliasAccessorValidator = &Core{}

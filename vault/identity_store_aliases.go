@@ -315,6 +315,17 @@ func (i *IdentityStore) handleAliasCreateUpdate() framework.OperationFunc {
 			}
 		}
 
+		// If they didn't provide an ID or Mount Accessor, but provided an issuer, validate that the issuer has been
+		// registered. Return error if issuer has not been registered.
+		if mountAccessor == "" && issuer != "" {
+			// Generate synthetic Mount Accessor
+			syntheticAccessor, err := i.syntheticAliasAccessorValidator.generateSyntheticAliasAccessor(ctx, issuer)
+			if err != nil {
+				return logical.ErrorResponse(err.Error()), nil
+			}
+			mountAccessor = syntheticAccessor
+		}
+
 		// If they didn't provide an ID, we must have both accessor and name provided
 		if mountAccessor == "" || name == "" {
 			return logical.ErrorResponse("'id' or 'mount_accessor' and 'name' must be provided"), nil
