@@ -59,3 +59,10 @@ func (s *Session) MustReadKV2(mountPath, secretPath string) *api.Secret {
 	fullPath := path.Join(mountPath, "data", secretPath)
 	return s.MustRead(fullPath)
 }
+
+func (s *Session) MustDelete(path string) {
+	s.t.Helper()
+
+	_, err := s.Client.Logical().Delete(path)
+	require.NoError(s.t, err)
+}
