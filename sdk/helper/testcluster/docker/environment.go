@@ -1323,13 +1323,13 @@ func (dc *DockerCluster) setupDockerCluster(ctx context.Context, opts *DockerClu
 		if opts.SkipInit {
 			continue
 		}
+		hasSealConfig := opts.VaultNodeConfig != nil && len(opts.VaultNodeConfig.Seal) > 0
 		if i == 0 {
-			hasSealConfig := opts.VaultNodeConfig != nil && len(opts.VaultNodeConfig.Seal) > 0
 			if err := dc.setupNode0(ctx, hasSealConfig); err != nil {
 				return err
 			}
 		} else {
-			if err := dc.joinNode(ctx, i, 0, false); err != nil {
+			if err := dc.joinNode(ctx, i, 0, hasSealConfig); err != nil {
 				return err
 			}
 		}

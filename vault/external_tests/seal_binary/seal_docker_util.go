@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -19,10 +18,8 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/api"
 	dockhelper "github.com/hashicorp/vault/sdk/helper/docker"
-	"github.com/hashicorp/vault/sdk/helper/testcluster"
 	"github.com/hashicorp/vault/sdk/helper/testcluster/docker"
 	client "github.com/moby/moby/client"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -366,56 +363,6 @@ func dockerOptions(t *testing.T, repo, tag string) *docker.DockerClusterOptions 
 		"performance_multiplier": "1",
 	}
 	return opts
-}
-
-type transitCluster struct {
-	cluster *docker.DockerCluster
-	t       *testing.T
-}
-
-func newTransitCluster(t *testing.T) *transitCluster {
-	opts := dockerOptions(t, "hashicorp/vault", "latest")
-	opts.DisableTLS = true // simplify, this way we don't have to deal with ca
-	opts.ClusterName = strings.ReplaceAll(t.Name()+"-transit", "/", "-")
-	return &transitCluster{t: t, cluster: docker.NewTestDockerCluster(t, opts)}
-}
-
-func (tc *transitCluster) SealWithPriorityAndDisabled(name string, idx int, disabled bool, priority int) testcluster.VaultNodeSealConfig {
-	seal := tc.Seal(name, idx)
-	seal.Config["disabled"] = strconv.FormatBool(disabled)
-	seal.Config["priority"] = strconv.Itoa(priority)
-	return seal
-}
-
-// Seal creates a seal using the given mount name and an idx that identifies a key.
-// The mount and key will be created.
-func (tc *transitCluster) Seal(name string, idx int) testcluster.VaultNodeSealConfig {
-	client := tc.cluster.Nodes()[0].APIClient()
-	if m, _ := client.Sys().GetMount(name); m == nil {
-		require.NoError(tc.t, client.Sys().Mount(name, &api.MountInput{
-			Type: "transit",
-		}))
-	}
-
-	keyName := fmt.Sprintf("transit-seal-%d", idx+1)
-
-	_, err := client.Logical().Write(path.Join(name, "keys", keyName), nil)
-	require.NoError(tc.t, err)
-
-	return testcluster.VaultNodeSealConfig{
-		Type: "transit",
-		Config: map[string]string{
-			// For another docker container to talk to this cluster they
-			// must use the real api address, not the remapped localhost
-			// address test code uses.
-			"address":    tc.cluster.Nodes()[0].(*docker.DockerClusterNode).RealAPIAddr,
-			"token":      tc.cluster.GetRootToken(),
-			"mount_path": name,
-			"key_name":   keyName,
-			"name":       strings.ReplaceAll(name, " ", "_") + "-" + keyName,
-			"priority":   "1",
-		},
-	}
 }
 
 type logScanner struct {
