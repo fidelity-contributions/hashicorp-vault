@@ -4,17 +4,25 @@
 package seal_binary
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"net/url"
 	"os"
 	"path"
+	"strconv"
+	"strings"
+	"sync"
+	"testing"
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/api"
 	dockhelper "github.com/hashicorp/vault/sdk/helper/docker"
+	"github.com/hashicorp/vault/sdk/helper/testcluster"
+	"github.com/hashicorp/vault/sdk/helper/testcluster/docker"
 	client "github.com/moby/moby/client"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -345,4 +353,186 @@ func copyRecoveryModeTriggerToContainer(containerID string, runner *dockhelper.R
 		return fmt.Errorf("error copying revovery mode trigger file to container: %w", err)
 	}
 	return nil
+}
+
+func dockerOptions(t *testing.T, repo, tag string) *docker.DockerClusterOptions {
+	opts := docker.DefaultOptions(t)
+	opts.NumCores = 1
+	opts.VaultBinary = os.Getenv("VAULT_BINARY")
+	opts.ImageRepo, opts.ImageTag = repo, tag
+	// Probably not reliable in CI with multi-node clusters, but we're assuming callers
+	// of this func won't change NumCores to be >1.
+	opts.VaultNodeConfig.StorageOptions = map[string]string{
+		"performance_multiplier": "1",
+	}
+	return opts
+}
+
+type transitCluster struct {
+	cluster *docker.DockerCluster
+	t       *testing.T
+}
+
+func newTransitCluster(t *testing.T) *transitCluster {
+	opts := dockerOptions(t, "hashicorp/vault", "latest")
+	opts.DisableTLS = true // simplify, this way we don't have to deal with ca
+	opts.ClusterName = strings.ReplaceAll(t.Name()+"-transit", "/", "-")
+	return &transitCluster{t: t, cluster: docker.NewTestDockerCluster(t, opts)}
+}
+
+func (tc *transitCluster) SealWithPriorityAndDisabled(name string, idx int, disabled bool, priority int) testcluster.VaultNodeSealConfig {
+	seal := tc.Seal(name, idx)
+	seal.Config["disabled"] = strconv.FormatBool(disabled)
+	seal.Config["priority"] = strconv.Itoa(priority)
+	return seal
+}
+
+// Seal creates a seal using the given mount name and an idx that identifies a key.
+// The mount and key will be created.
+func (tc *transitCluster) Seal(name string, idx int) testcluster.VaultNodeSealConfig {
+	client := tc.cluster.Nodes()[0].APIClient()
+	if m, _ := client.Sys().GetMount(name); m == nil {
+		require.NoError(tc.t, client.Sys().Mount(name, &api.MountInput{
+			Type: "transit",
+		}))
+	}
+
+	keyName := fmt.Sprintf("transit-seal-%d", idx+1)
+
+	_, err := client.Logical().Write(path.Join(name, "keys", keyName), nil)
+	require.NoError(tc.t, err)
+
+	return testcluster.VaultNodeSealConfig{
+		Type: "transit",
+		Config: map[string]string{
+			// For another docker container to talk to this cluster they
+			// must use the real api address, not the remapped localhost
+			// address test code uses.
+			"address":    tc.cluster.Nodes()[0].(*docker.DockerClusterNode).RealAPIAddr,
+			"token":      tc.cluster.GetRootToken(),
+			"mount_path": name,
+			"key_name":   keyName,
+			"name":       strings.ReplaceAll(name, " ", "_") + "-" + keyName,
+			"priority":   "1",
+		},
+	}
+}
+
+type logScanner struct {
+	wg   sync.WaitGroup
+	l    sync.Mutex
+	ch   chan string
+	pw   *io.PipeWriter
+	stop chan struct{}
+}
+
+func newLogScanner(t *testing.T, underlying io.Writer, bufLines int) (*logScanner, io.Writer) {
+	pr, pw := io.Pipe()
+	ls := &logScanner{
+		ch:   make(chan string, bufLines),
+		pw:   pw,
+		stop: make(chan struct{}),
+	}
+
+	ls.wg.Add(1)
+	go func() {
+		defer ls.wg.Done()
+		// bufio.Scanner is perfect here because hclog writes each log entry
+		// ending with a newline character.
+		scanner := bufio.NewScanner(pr)
+
+		// scanner.Scan() will block until a new line is written to the pipe,
+		// and it will exit automatically when pw.Close() is called.
+		for scanner.Scan() {
+			logLine := scanner.Text()
+			underlying.Write([]byte(logLine + "\n"))
+			select {
+			case <-ls.stop:
+				return
+			case ls.ch <- logLine:
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			t.Fatalf("Scanner error: %v", err)
+		}
+	}()
+
+	t.Cleanup(func() {
+		if err := ls.Close(); err != nil {
+			t.Logf("Error closing scanner: %v", err)
+		}
+	})
+
+	return ls, pw
+}
+
+func (ls *logScanner) Lines() <-chan string {
+	return ls.ch
+}
+
+func (ls *logScanner) Close() error {
+	ls.l.Lock()
+	defer ls.l.Unlock()
+
+	close(ls.stop)
+	err := ls.pw.Close()
+	ls.wg.Wait()
+
+	return err
+}
+
+type logMatcher struct {
+	targets map[string]bool
+	lines   <-chan string
+	done    chan struct{}
+	l       sync.RWMutex
+}
+
+func newLogMatcher(lines <-chan string, targets []string) *logMatcher {
+	tmap := make(map[string]bool)
+	for _, target := range targets {
+		tmap[target] = false
+	}
+	lm := &logMatcher{
+		targets: tmap,
+		lines:   lines,
+		done:    make(chan struct{}),
+	}
+
+	go func() {
+		for {
+			select {
+			case <-lm.done:
+				return
+			case line := <-lines:
+				for target, ok := range tmap {
+					if !ok && strings.Contains(line, target) {
+						lm.l.Lock()
+						tmap[target] = true
+						lm.l.Unlock()
+					}
+				}
+			}
+		}
+	}()
+
+	return lm
+}
+
+func (lm *logMatcher) stop() {
+	close(lm.done)
+}
+
+func (lm *logMatcher) missing() []string {
+	lm.l.RLock()
+	defer lm.l.RUnlock()
+
+	var ret []string
+	for target, found := range lm.targets {
+		if !found {
+			ret = append(ret, target)
+		}
+	}
+	return ret
 }

@@ -115,7 +115,7 @@ func TestSysRekey_ConfigReload(t *testing.T) {
 		nodeConfig.EnableUnauthenticatedAccess = []string{"rekey"}
 
 		// Update the config and copy it to the container
-		err := node.UpdateConfig(t.Context(), nodeConfig)
+		err := node.UpdateConfig(t.Context(), opts)
 		require.NoError(t, err, "failed to update config")
 
 		// Send SIGHUP to reload the configuration
@@ -154,7 +154,7 @@ func TestSysRekey_ConfigReload(t *testing.T) {
 		nodeConfig.EnableUnauthenticatedAccess = nil
 
 		// Update the config and copy it to the container
-		err := node.UpdateConfig(t.Context(), nodeConfig)
+		err := node.UpdateConfig(t.Context(), opts)
 		require.NoError(t, err, "failed to update config")
 
 		// Send SIGHUP to reload the configuration
