@@ -107,7 +107,7 @@ require (
 	github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2 v2.0.13
 	github.com/hashicorp/go-memdb v1.3.5
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/hashicorp/go-pgmultiauth v1.0.0
+	github.com/hashicorp/go-pgmultiauth v1.1.0
 	github.com/hashicorp/go-plugin v1.7.0
 	github.com/hashicorp/go-raftchunking v0.6.3-0.20191002164813-7e9e8525653a
 	github.com/hashicorp/go-retryablehttp v0.7.8
