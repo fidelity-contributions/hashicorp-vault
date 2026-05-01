@@ -148,13 +148,13 @@ export default class SearchSelect extends Component {
           ? options
           : [...this.addSearchText(options)];
 
-        if (!this.args.parentManageSelected) {
-          //  set selectedOptions and remove matches from dropdown list
-          this.selectedOptions = this.args.inputValue
-            ? this.formatInputAndUpdateDropdown(this.args.inputValue)
-            : [];
-        }
+        //  set selectedOptions and remove matches from dropdown list
+        const values = this.args.parentManageSelected
+          ? this.args.parentManageSelected.map((opt) => opt[this.idKey])
+          : this.args.inputValue;
+        this.selectedOptions = values ? this.formatInputAndUpdateDropdown(values) : [];
       }
+      this.shouldUseFallback = this.args.fallbackComponent && !this.args.options?.length;
       return;
     }
 
