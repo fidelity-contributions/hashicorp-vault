@@ -39,6 +39,7 @@ module('Acceptance | oidc-config clients', function (hooks) {
   hooks.beforeEach(function () {
     oidcConfigHandlers(this.server);
     this.store = this.owner.lookup('service:store');
+    this.api = this.owner.lookup('service:api');
     return login();
   });
 
@@ -47,9 +48,11 @@ module('Acceptance | oidc-config clients', function (hooks) {
       assert.expect(21);
 
       //* start with clean test state
-      await clearRecord(this.store, 'oidc/client', 'client-with-test-key');
-      await clearRecord(this.store, 'oidc/client', 'client-with-default-key');
-      await clearRecord(this.store, 'oidc/key', 'test-key');
+      await Promise.allSettled([
+        this.api.identity.oidcDeleteClient('client-with-test-key'),
+        this.api.identity.oidcDeleteClient('client-with-default-key'),
+        clearRecord(this.store, 'oidc/key', 'test-key'),
+      ]);
 
       // create client with default key
       await visit(OIDC_BASE_URL + '/clients/create');
@@ -180,9 +183,11 @@ module('Acceptance | oidc-config clients', function (hooks) {
       );
 
       //* clean up test state
-      await clearRecord(this.store, 'oidc/client', 'client-with-test-key');
-      await clearRecord(this.store, 'oidc/client', 'client-with-default-key');
-      await clearRecord(this.store, 'oidc/key', 'test-key');
+      await Promise.allSettled([
+        this.api.identity.oidcDeleteClient('client-with-test-key'),
+        this.api.identity.oidcDeleteClient('client-with-default-key'),
+        clearRecord(this.store, 'oidc/key', 'test-key'),
+      ]);
     });
 
     test('it creates, rotates and deletes a key', async function (assert) {
@@ -366,9 +371,11 @@ module('Acceptance | oidc-config clients', function (hooks) {
       assert.expect(21);
 
       //* clear out test state
-      await clearRecord(this.store, 'oidc/client', 'test-app');
-      await clearRecord(this.store, 'oidc/client', 'my-webapp'); // created by oidc-provider-test
-      await clearRecord(this.store, 'oidc/assignment', 'assignment-inline');
+      await Promise.allSettled([
+        this.api.identity.oidcDeleteClient('test-app'),
+        this.api.identity.oidcDeleteClient('my-webapp'),
+        clearRecord(this.store, 'oidc/assignment', 'assignment-inline'),
+      ]);
 
       // create a client with allow all access
       await visit(OIDC_BASE_URL + '/clients/create');
