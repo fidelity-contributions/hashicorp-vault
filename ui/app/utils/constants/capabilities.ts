@@ -40,6 +40,7 @@ export const PATH_MAP = {
   ldapStaticRoleCreds: apiPath`${'backend'}/static-cred/${'name'}`,
   oidcClient: apiPath`identity/oidc/client/${'name'}`,
   oidcProvider: apiPath`identity/oidc/provider/${'name'}`,
+  oidcScope: apiPath`identity/oidc/scope/${'name'}`,
   pkiCertificates: apiPath`${'backend'}/certificates`,
   pkiConfigAcme: apiPath`${'backend'}/config/acme`,
   pkiConfigAutoTidy: apiPath`${'backend'}/config/auto-tidy`,

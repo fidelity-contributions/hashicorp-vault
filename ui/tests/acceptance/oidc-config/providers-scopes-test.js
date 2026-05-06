@@ -23,7 +23,6 @@ import {
   SCOPE_DATA_RESPONSE,
   PROVIDER_LIST_RESPONSE,
   PROVIDER_DATA_RESPONSE,
-  clearRecord,
 } from 'vault/tests/helpers/oidc-config';
 import { capabilitiesStub, overrideResponse } from 'vault/tests/helpers/stubs';
 import sinon from 'sinon';
@@ -39,7 +38,6 @@ module('Acceptance |  oidc-config providers and scopes', function (hooks) {
 
   hooks.beforeEach(function () {
     oidcConfigHandlers(this.server);
-    this.store = this.owner.lookup('service:store');
     this.api = this.owner.lookup('service:api');
     // mock client list so OIDC BASE URL does not redirect to landing call-to-action image
     this.server.get('/identity/oidc/client', () => overrideResponse(null, { data: CLIENT_LIST_RESPONSE }));
@@ -49,7 +47,13 @@ module('Acceptance |  oidc-config providers and scopes', function (hooks) {
   // LIST SCOPES EMPTY
   test('it navigates to scopes list view and renders empty state when no scopes are configured', async function (assert) {
     assert.expect(4);
-    this.server.get('/identity/oidc/scope', () => overrideResponse(404));
+    this.server.get(
+      '/identity/oidc/scope',
+      () => ({
+        errors: ['Nothing found'],
+      }),
+      404
+    );
     await visit(OIDC_BASE_URL);
     await click(GENERAL.tab('scopes'));
     assert.strictEqual(currentURL(), '/vault/access/oidc/scopes');
@@ -168,11 +172,11 @@ module('Acceptance |  oidc-config providers and scopes', function (hooks) {
   test('it creates a scope, and creates a provider with that scope', async function (assert) {
     assert.expect(28);
 
-    const apiSpy = sinon.spy(this.owner.lookup('service:api').identity, 'oidcWriteProvider');
+    const apiSpy = sinon.spy(this.api.identity, 'oidcWriteProvider');
 
     //* clear out test state
     await Promise.allSettled([
-      clearRecord(this.store, 'oidc/scope', 'test-scope'),
+      this.api.identity.oidcDeleteScope('test-scope'),
       this.api.identity.oidcDeleteProvider('test-provider'),
     ]);
 
