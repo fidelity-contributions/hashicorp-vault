@@ -51,7 +51,7 @@ module('Acceptance | oidc-config clients', function (hooks) {
       await Promise.allSettled([
         this.api.identity.oidcDeleteClient('client-with-test-key'),
         this.api.identity.oidcDeleteClient('client-with-default-key'),
-        clearRecord(this.store, 'oidc/key', 'test-key'),
+        this.api.identity.oidcDeleteKey('test-key'),
       ]);
 
       // create client with default key
@@ -186,7 +186,7 @@ module('Acceptance | oidc-config clients', function (hooks) {
       await Promise.allSettled([
         this.api.identity.oidcDeleteClient('client-with-test-key'),
         this.api.identity.oidcDeleteClient('client-with-default-key'),
-        clearRecord(this.store, 'oidc/key', 'test-key'),
+        this.api.identity.oidcDeleteKey('test-key'),
       ]);
     });
 
@@ -204,14 +204,14 @@ module('Acceptance | oidc-config clients', function (hooks) {
       });
 
       //* clear out test state
-      await clearRecord(this.store, 'oidc/key', 'test-key');
+      await this.api.identity.oidcDeleteKey('test-key');
 
       // create a new key
       await visit(OIDC_BASE_URL + '/keys/create');
       await fillIn('[data-test-input="name"]', 'test-key');
       // toggle ttls to false, testing it sets correct default duration
-      await click('[data-test-input="rotationPeriod"]');
-      await click('[data-test-input="verificationTtl"]');
+      await click('[data-test-input="rotation_period"]');
+      await click('[data-test-input="verification_ttl"]');
       assert
         .dom('[data-test-oidc-radio="limited"] input')
         .isDisabled('limiting access radio button is disabled on create');
@@ -311,7 +311,7 @@ module('Acceptance | oidc-config clients', function (hooks) {
 
     test('it hides delete and edit key when no permission', async function (assert) {
       assert.expect(4);
-      this.server.get('/identity/oidc/keys', () => overrideResponse(null, { data: { keys: ['test-key'] } }));
+      this.server.get('/identity/oidc/key', () => overrideResponse(null, { data: { keys: ['test-key'] } }));
       this.server.get('/identity/oidc/key/test-key', () =>
         overrideResponse(null, {
           data: {
@@ -323,7 +323,7 @@ module('Acceptance | oidc-config clients', function (hooks) {
         })
       );
       this.server.post('/sys/capabilities-self', () =>
-        capabilitiesStub('/identity/oidc/key/test-key', ['read'])
+        capabilitiesStub('identity/oidc/key/test-key', ['read'])
       );
 
       await visit(OIDC_BASE_URL + '/keys');

@@ -83,7 +83,7 @@ export default class OidcProviderForm extends Component {
   @action
   handleClientSelection(selection) {
     const { data } = this.args.form;
-    // when trigger from search-select component an array is passed
+    // when triggered from search-select component an array is passed
     // set selection as clients
     if (Array.isArray(selection)) {
       data.allowed_client_ids = selection.map((client) => client.client_id);
