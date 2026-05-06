@@ -4,11 +4,11 @@
 package system_binary
 
 import (
-	"os"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/vault/api"
+	"github.com/hashicorp/vault/helper/testhelpers/testimages"
 	"github.com/hashicorp/vault/sdk/helper/testcluster"
 	"github.com/hashicorp/vault/sdk/helper/testcluster/docker"
 	"github.com/stretchr/testify/require"
@@ -60,19 +60,15 @@ func waitForRekeyInConfig(t *testing.T, client *api.Client, rootToken string, sh
 // between requiring authentication and not requiring authentication by using
 // the enable_unauthenticated_access config option and reloading the config.
 func TestSysRekey_ConfigReload(t *testing.T) {
-	binary := os.Getenv("VAULT_BINARY")
-	if binary == "" {
-		t.Skip("only running docker test when $VAULT_BINARY present")
-	}
+	repo, tag := testimages.GetImageRepoAndTag(t, false)
 
 	nodeConfig := &testcluster.VaultNodeConfig{
 		LogLevel: "TRACE",
 	}
 	opts := &docker.DockerClusterOptions{
-		ImageRepo:    "hashicorp/vault",
-		ImageTag:     "latest",
-		VaultBinary:  binary,
 		DisableMlock: true,
+		ImageRepo:    repo,
+		ImageTag:     tag,
 		ClusterOptions: testcluster.ClusterOptions{
 			NumCores:        1,
 			VaultNodeConfig: nodeConfig,
